@@ -13,6 +13,7 @@
     "opener:default",
     "updater:default",
     "process:allow-restart",
+    "clipboard-manager:allow-write-text",
     "aptabase:allow-track-event"
   ]
 }

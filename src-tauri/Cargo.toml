@@ -34,6 +34,9 @@ tauri-plugin-dialog = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# Native clipboard writes: navigator.clipboard needs a live user gesture in
+# WKWebView, which an awaited IPC call consumes ("Copy for agents", #66).
+tauri-plugin-clipboard-manager = "2"
 notify = "6"
 ignore = "0.4"
 tauri-plugin-aptabase = "1.0.0"

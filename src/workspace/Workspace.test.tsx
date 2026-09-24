@@ -7,6 +7,7 @@ const openTarget = vi.fn();
 const refreshReview = vi.fn();
 const listCommits = vi.fn();
 const computeDiff = vi.fn();
+const exportReview = vi.fn();
 vi.mock("../api", () => ({
   api: {
     openReview: (...a: unknown[]) => openReview(...a),
@@ -15,7 +16,7 @@ vi.mock("../api", () => ({
     listCommits: (...a: unknown[]) => listCommits(...a),
     computeDiff: (...a: unknown[]) => computeDiff(...a),
     saveReview: vi.fn(),
-    exportReview: vi.fn(),
+    exportReview: (...a: unknown[]) => exportReview(...a),
     getFileDiff: vi.fn(),
     // The empty-session path renders <NothingToReview>, which enumerates the repo's
     // other worktrees; default to none so it shows its placeholder.
@@ -37,6 +38,11 @@ vi.mock("@tauri-apps/api/event", () => ({
     return Promise.resolve(() => {});
   },
 }));
+
+// "Copy for agents" must write through the app clipboard helper (Tauri plugin),
+// not navigator.clipboard — see clipboard.ts / #66.
+const copyText = vi.fn();
+vi.mock("../lib/clipboard", () => ({ copyText: (...a: unknown[]) => copyText(...a) }));
 
 import { Workspace } from "./Workspace";
 import type { Target } from "../types";
@@ -64,6 +70,8 @@ describe("Workspace", () => {
     refreshReview.mockReset();
     listCommits.mockReset().mockResolvedValue([]);
     computeDiff.mockReset().mockResolvedValue({ files: [], baseLabel: "p", headLabel: "c" });
+    exportReview.mockReset();
+    copyText.mockReset().mockResolvedValue(undefined);
     fsChanged = null;
     setMode = null;
   });
@@ -195,5 +203,21 @@ describe("Workspace", () => {
       fsChanged?.({ payload: { paths: [], gitMeta: true } });
     });
     await waitFor(() => expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument());
+  });
+
+  it("Copy for agents exports the review and copies it via the clipboard helper (#66)", async () => {
+    const comment = { id: "c1", scope: "file", anchor: { file: "src/a.ts", side: "new" }, body: "ship it", stale: false, resolved: false, createdAt: "t", updatedAt: "t" };
+    const session = { ...fileSession, review: { ...fileSession.review, comments: [comment] } };
+    openReview.mockResolvedValue(session);
+    exportReview.mockResolvedValue("# Review\n\n- ship it");
+    render(<Workspace target={target} />);
+    const btn = await screen.findByRole("button", { name: /copy for agents/i });
+    await waitFor(() => expect(btn).toBeEnabled());
+
+    await act(async () => { fireEvent.click(btn); });
+
+    expect(exportReview).toHaveBeenCalledWith(expect.objectContaining({ id: "x" }));
+    await waitFor(() => expect(copyText).toHaveBeenCalledWith("# Review\n\n- ship it"));
+    await waitFor(() => expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument());
   });
 });

@@ -41,6 +41,7 @@ import { wrapsByDefault, paneColsFor, visualLinesForCols, buildRowOffsets } from
 import { splitRowChanged, splitSideChanged } from "./splitChanged";
 import { anchorScrollTopOnCollapse } from "./anchorScroll";
 import { useCodeFont, rowHeightFor } from "../codeFont";
+import { copyText } from "../lib/clipboard";
 
 const HEADER_H = 40; // sticky file header (border-box); content is vertically centered. (#card)
 // Row height + char width are derived from the code-font-size pref at render (the
@@ -726,7 +727,7 @@ const VFileSection = memo(function VFileSection({
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef(0);
   const copyName = useCallback(() => {
-    void navigator.clipboard.writeText(base).then(() => {
+    void copyText(base).then(() => {
       setCopied(true);
       window.clearTimeout(copyTimer.current);
       copyTimer.current = window.setTimeout(() => setCopied(false), 1200);
